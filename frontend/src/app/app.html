@@ -1,0 +1,67 @@
+<div class="shell">
+  <aside class="sidebar">
+    <a class="brand" href="#" (click)="$event.preventDefault(); setSection('Dashboard')">cine<span>vo</span><small>ADMIN</small></a>
+    <div class="nav-label">GESTIÓN</div>
+    <nav>
+      <button [class.active]="activeSection() === 'Dashboard'" (click)="setSection('Dashboard')"><span>▦</span> Dashboard</button>
+      <button [class.active]="activeSection() === 'Analytics'" (click)="setSection('Analytics')"><span>▥</span> Analytics</button>
+      <div class="nav-label spaced">CATÁLOGO</div>
+      <button [class.active]="activeSection() === 'Home Sections'" (click)="setSection('Home Sections')"><span>⌂</span> Home Sections</button>
+      <button [class.active]="activeSection() === 'Movies'" (click)="setSection('Movies')"><span>▤</span> Movies</button>
+      <button [class.active]="activeSection() === 'TV Shows'" (click)="setSection('TV Shows')"><span>▣</span> TV Shows</button>
+      <button [class.active]="activeSection() === 'Live Channels'" (click)="setSection('Live Channels')"><span>◉</span> Live Channels</button>
+      <button [class.active]="activeSection() === 'Curated Lists'" (click)="setSection('Curated Lists')"><span>☷</span> Curated Lists</button>
+    </nav>
+    <div class="sidebar-bottom"><button (click)="setSection('API Docs')"><span>▤</span> API Docs</button><button (click)="setSection('Settings')"><span>⚙</span> Settings</button><div class="version">CINEVO ADMIN <span>v1.0.0</span></div></div>
+  </aside>
+
+  <main class="main-area">
+    <header class="topbar"><div class="crumb">Cinevo <span>/</span> {{ activeSection() }}</div><div class="profile"><div class="avatar">A</div><div><strong>Administrador</strong><small>Panel de control</small></div><span class="chevron">⌄</span></div></header>
+    <section class="content">
+      <div class="page-heading"><div><div class="eyebrow">CENTRO DE CONTROL</div><h1>{{ activeSection() === 'Movies' ? 'Películas' : activeSection() }}</h1><p>Administra y organiza el contenido de tu plataforma Cinevo.</p></div><button class="primary" (click)="openCreate()">＋ <span>Agregar contenido</span></button></div>
+
+      @if (notice()) { <div class="notice">✓ {{ notice() }} <button (click)="notice.set('')">×</button></div> }
+      @if (error()) { <div class="alert">{{ error() }} <button (click)="error.set('')">×</button></div> }
+
+      <div class="stats-grid">
+        <article class="stat-card"><div class="stat-top"><span>Total de contenido</span><span class="stat-icon purple">▤</span></div><div class="stat-value">{{ total() }}</div><div class="stat-foot">Registros en la base de datos</div></article>
+        <article class="stat-card"><div class="stat-top"><span>Publicados</span><span class="stat-icon green">✓</span></div><div class="stat-value">{{ publishedCount() }}</div><div class="stat-foot">Visibles en el catálogo</div></article>
+        <article class="stat-card"><div class="stat-top"><span>Borradores</span><span class="stat-icon amber">◷</span></div><div class="stat-value">{{ draftCount() }}</div><div class="stat-foot">Pendientes de publicación</div></article>
+        <article class="stat-card"><div class="stat-top"><span>Calificación media</span><span class="stat-icon pink">★</span></div><div class="stat-value">{{ averageRating() }}<small>/10</small></div><div class="stat-foot">Promedio de calificaciones registradas</div></article>
+      </div>
+
+      <section class="catalog-card">
+        <div class="catalog-heading"><div><h2>Catálogo de contenido</h2><p>Consulta, crea y modifica los títulos almacenados en MongoDB.</p></div><button class="outline" (click)="loadMovies()">↻ Actualizar</button></div>
+        <div class="toolbar"><label class="search-box"><span>⌕</span><input #searchInput type="search" placeholder="Buscar por título o género..." [value]="search()" (input)="onSearch(searchInput.value)"></label><label class="page-size">Mostrar <select [value]="pageSize()" (change)="changePageSize($any($event.target).value)"><option value="8">8</option><option value="15">15</option><option value="25">25</option></select></label></div>
+        <div class="table-wrap"><table><thead><tr><th>CONTENIDO</th><th>GÉNERO</th><th>AÑO</th><th>VALORACIÓN</th><th>ESTADO</th><th class="actions-head">ACCIONES</th></tr></thead>
+          <tbody>
+            @if (loading()) { <tr><td colspan="6" class="empty">Conectando con Cinevo API...</td></tr> }
+            @else if (visibleMovies().length === 0) { <tr><td colspan="6" class="empty"><div class="empty-icon">▤</div><strong>No hay contenido para mostrar</strong><span>Agrega una película o cambia tu búsqueda.</span><button class="primary small" (click)="openCreate()">＋ Agregar contenido</button></td></tr> }
+            @else { @for (movie of visibleMovies(); track trackById($index, movie)) {
+              <tr><td><div class="movie-cell"><div class="poster">@if (movie.posterUrl) { <img [src]="movie.posterUrl" [alt]="movie.title" (error)="$any($event.target).style.display='none'"> } @else { <span>▶</span> }</div><div class="movie-info"><strong>{{ movie.title }}</strong><span>{{ movie.type }} · {{ movie.year }}</span></div></div></td><td>{{ movie.genre }}</td><td>{{ movie.year }}</td><td><span class="rating">★ {{ movie.rating ? movie.rating.toFixed(1) : '—' }}</span></td><td><span class="status" [class.published]="movie.status === 'Publicado'" [class.draft]="movie.status === 'Borrador'" [class.inactive]="movie.status === 'Inactivo'">{{ movie.status }}</span></td><td><div class="row-actions"><button class="edit-btn" (click)="openEdit(movie)" [disabled]="!movie._id">Editar</button><button class="delete-btn" (click)="deleteMovie(movie)" [disabled]="!movie._id" aria-label="Eliminar película">Eliminar</button></div></td></tr>
+            } }
+          </tbody></table></div>
+        <footer class="table-footer"><span>{{ total() ? 'Mostrando ' + (((page() - 1) * pageSize()) + 1) + '–' + (((page() - 1) * pageSize()) + visibleMovies().length) + ' de ' + total() + ' registros' : '0 registros' }}</span><div class="pagination"><button [disabled]="page() <= 1" (click)="changePage(-1)">‹</button><span>Página {{ page() }} de {{ pageCount() }}</span><button [disabled]="page() >= pageCount()" (click)="changePage(1)">›</button></div></footer>
+      </section>
+      <div class="footer-note"><span class="online-dot"></span> Panel conectado a la API de Cinevo <span class="footer-right">Contenido protegido · Cinevo Admin</span></div>
+    </section>
+  </main>
+</div>
+
+@if (modalOpen()) {
+  <div class="modal-backdrop" (click)="closeModal()" (keydown.escape)="closeModal()"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" (click)="$event.stopPropagation()">
+    <div class="modal-head"><div><div class="eyebrow">CATÁLOGO CINEVO</div><h2 id="modal-title">{{ editingId() ? 'Editar contenido' : 'Agregar contenido' }}</h2><p>Los cambios se guardarán en MongoDB.</p></div><button class="close-btn" (click)="closeModal()" aria-label="Cerrar">×</button></div>
+    <form (ngSubmit)="saveMovie()"><div class="form-grid">
+      <label class="field full">Título *<input required maxlength="180" [ngModel]="form().title" (ngModelChange)="updateField('title', $event)" name="title" placeholder="Ej. Dune: Part Two"></label>
+      <label class="field">Tipo<select [ngModel]="form().type" (ngModelChange)="updateField('type', $event)" name="type"><option>Película</option><option>Serie</option></select></label>
+      <label class="field">Año *<input required type="number" min="1888" max="2100" [ngModel]="form().year" (ngModelChange)="updateField('year', +$event)" name="year"></label>
+      <label class="field">Género *<select required [ngModel]="form().genre" (ngModelChange)="updateField('genre', $event)" name="genre">@for (genre of genres; track genre) { <option [value]="genre">{{ genre }}</option> }</select></label>
+      <label class="field">Calificación (0–10)<input type="number" min="0" max="10" step="0.1" [ngModel]="form().rating" (ngModelChange)="updateField('rating', +$event)" name="rating"></label>
+      <label class="field">Estado<select [ngModel]="form().status" (ngModelChange)="updateField('status', $event)" name="status"><option>Publicado</option><option>Borrador</option><option>Inactivo</option></select></label>
+      <label class="field">URL del póster<input type="url" [ngModel]="form().posterUrl" (ngModelChange)="updateField('posterUrl', $event)" name="posterUrl" placeholder="https://..."></label>
+      <label class="field full">Descripción<textarea rows="3" maxlength="3000" [ngModel]="form().description" (ngModelChange)="updateField('description', $event)" name="description" placeholder="Sinopsis breve..."></textarea></label>
+    </div>
+    @if (error()) { <div class="alert modal-alert">{{ error() }}</div> }
+    <div class="modal-actions"><button type="button" class="outline" (click)="closeModal()" [disabled]="saving()">Cancelar</button><button type="submit" class="primary" [disabled]="saving()">{{ saving() ? 'Guardando...' : (editingId() ? 'Guardar cambios' : 'Crear contenido') }}</button></div></form>
+  </section></div>
+}
