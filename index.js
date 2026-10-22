@@ -6,6 +6,7 @@ const connectDatabase = require('./database');
 const moviesRoutes = require('./routes/movies');
 
 const app = express();
+const port = Number(process.env.PORT) || 3000;
 const allowedOrigin = process.env.FRONTEND_ORIGIN || 'https://interfaz-u4z8.vercel.app';
 
 app.use(cors({ origin: allowedOrigin }));
